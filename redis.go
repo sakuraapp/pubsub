@@ -148,7 +148,7 @@ func (d *RedisDispatcher) DispatchRoom(roomId model.RoomId, msg *Message) error 
 	return d.rdb.Publish(d.ctx, roomKey, bytes).Err()
 }
 
-func NewRedis(ctx context.Context, ld LocalDispatcher, nodeId string, rdb *redis.Client) *RedisDispatcher {
+func NewRedisDispatcher(ctx context.Context, ld LocalDispatcher, nodeId string, rdb *redis.Client) *RedisDispatcher {
 	return &RedisDispatcher{
 		LocalDispatcher: ld,
 		ctx:             ctx,
