@@ -4,14 +4,8 @@ import (
 	"github.com/sakuraapp/shared/pkg/model"
 )
 
-type LocalDispatcher interface {
-	DispatchLocal(msg *Message) error
-	DispatchRoomLocal(roomId model.RoomId, msg *Message) error
-	HandleServerMessage(msg *Message)
-}
-
 type Dispatcher interface {
-	LocalDispatcher
-	Dispatch(msg *Message) error
-	DispatchRoom(roomId model.RoomId, msg *Message) error
+	Dispatch(topic string, message Message) error
+	DispatchTo(target *MessageTarget, message Message) error
+	DispatchToRoom(roomId model.RoomId, message Message) error
 }
