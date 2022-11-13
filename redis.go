@@ -3,7 +3,6 @@ package pubsub
 import (
 	"context"
 	"github.com/go-redis/redis/v8"
-	"github.com/sakuraapp/shared/pkg/model"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -23,15 +22,8 @@ func (d *RedisDispatcher) Dispatch(topic string, message Message) error {
 	return d.rdb.Publish(d.ctx, topic, bytes).Err()
 }
 
-func (d *RedisDispatcher) DispatchTo(target *MessageTarget, message Message) error {
+func (d *RedisDispatcher) DispatchTo(target MessageTarget, message Message) error {
 	return d.Dispatch(target.Build(), message)
-}
-
-func (d *RedisDispatcher) DispatchToRoom(roomId model.RoomId, message Message) error {
-	return d.DispatchTo(&MessageTarget{
-		Kind:  MessageTargetRoom,
-		Value: roomId,
-	}, message)
 }
 
 func NewRedisDispatcher(ctx context.Context, nodeId string, rdb *redis.Client) *RedisDispatcher {

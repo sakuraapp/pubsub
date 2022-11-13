@@ -4,7 +4,6 @@ go 1.17
 
 require (
 	github.com/go-redis/redis/v8 v8.11.4
-	github.com/sakuraapp/shared v0.0.0-20220217101033-befba93b53ef
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 )
 

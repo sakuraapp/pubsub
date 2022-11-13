@@ -1,60 +1,26 @@
 package pubsub
 
 import (
-	"fmt"
-	"github.com/sakuraapp/shared/pkg/model"
-	"github.com/sakuraapp/shared/pkg/resource"
-	"github.com/sakuraapp/shared/pkg/resource/permission"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-type MessageType int
-
-type MessageTargetKind int
 type MessageFilterKind int
 
-
-type MessageTarget struct {
-	Kind MessageTargetKind
-	Value interface{}
+type MessageTarget interface {
+	Build() string
 }
 
-func (m *MessageTarget) Build() string {
-	return fmt.Sprintf(targets[m.Kind], m.Value)
-}
-
-type FilterMap map[MessageFilterKind]interface{}
-
-func (m FilterMap) WithIgnoredSession(sessionId string) FilterMap {
-	m[MessageFilterIgnoredSession] = sessionId
-
-	return m
-}
-
-func (m FilterMap) WithPermissions(perm permission.Permission) FilterMap {
-	m[MessageFilterPermissions] = perm
-
-	return m
-}
-
-func (m FilterMap) WithRoom(roomId model.RoomId) FilterMap {
-	m[MessageFilterRoom] = roomId
-
-	return m
-}
-
-func NewFilterMap() *FilterMap {
-	return &FilterMap{}
-}
-
-type MessageOptions struct {
-	Filters FilterMap `msgpack:"f,omitempty"`
-}
+type FilterMap = map[MessageFilterKind]interface{}
 
 type Message struct {
-	Type    MessageType     `msgpack:"t,omitempty"`
-	Options *MessageOptions `msgpack:"o,omitempty,inline"`
-	Payload resource.Packet `msgpack:"p,omitempty"`
+	Filters FilterMap 		`msgpack:"f,omitempty"`
+	Payload interface{} 	`msgpack:"p,omitempty"`
+}
+
+func (m *Message) WithFilter(kind MessageFilterKind, value interface{}) *Message {
+	m.Filters[kind] = value
+
+	return m
 }
 
 type rawMessage Message
@@ -67,13 +33,13 @@ func (m *Message) UnmarshalBinary(b []byte) error {
 	return msgpack.Unmarshal(b, (*rawMessage)(m))
 }
 
-func NewMessage(payload resource.Packet, opts ...*MessageOptions) Message {
+func NewMessage(payload interface{}, opts ...FilterMap) Message {
 	if len(opts) == 0 {
-		opts = append(opts, &MessageOptions{})
+		opts = append(opts, FilterMap{})
 	}
 
 	return Message{
 		Payload: payload,
-		Options: opts[0],
+		Filters: opts[0],
 	}
 }
