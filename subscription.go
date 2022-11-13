@@ -2,62 +2,83 @@ package pubsub
 
 import (
 	"context"
-	"github.com/go-redis/redis/v8"
 	"sync"
 )
 
-type Subscriber interface {
-	Receive(message Message)
+type Client interface {
+	Subscribe(ctx context.Context, channels ...string) error
+	Unsubscribe(ctx context.Context, channels ...string) error
 }
 
-type SubscriberMap = map[Subscriber]bool
-type SubscriptionMap = map[string]SubscriberMap
+type SubscriptionMap = map[string]int
 
 type SubscriptionManager struct {
 	mu sync.Mutex
-	pubsub *redis.PubSub
+	pubsub Client
 	subscriptions SubscriptionMap
 }
 
-func (m *SubscriptionManager) has(topic string, sub Subscriber) bool {
-	if m.subscriptions[topic] != nil {
-		return m.subscriptions[topic][sub]
-	} else {
-		return false
-	}
-}
-
-func (m *SubscriptionManager) add(topic string, sub Subscriber) {
+func (m *SubscriptionManager) Add(ctx context.Context, topic string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if m.subscriptions[topic] == nil {
-		m.subscriptions[topic] = SubscriberMap{sub: true}
-	} else {
-		m.subscriptions[topic][sub] = true
-	}
-}
+	m.subscriptions[topic] += 1
 
-func (m *SubscriptionManager) Subscribe(ctx context.Context, topic string, sub Subscriber) error {
-	if !m.has(topic, sub) {
-		m.add(topic, sub)
-
+	if m.subscriptions[topic] == 1 {
 		return m.pubsub.Subscribe(ctx, topic)
 	} else {
 		return nil
 	}
 }
 
-func (m *SubscriptionManager) SubscribeMulti(ctx context.Context, topics []string, sub Subscriber) error {
+func (m *SubscriptionManager) AddMulti(ctx context.Context, topics []string) error {
 	var newTopics []string
 
 	for _, topic := range topics {
-		if !m.has(topic, sub) {
-			m.add(topic, sub)
+		m.subscriptions[topic] += 1
 
+		if m.subscriptions[topic] == 1 {
 			newTopics = append(newTopics, topic)
 		}
 	}
 
 	return m.pubsub.Subscribe(ctx, newTopics...)
+}
+
+func (m *SubscriptionManager) Remove(ctx context.Context, topic string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.subscriptions[topic] > 0 {
+		m.subscriptions[topic] -= 1
+
+		if m.subscriptions[topic] == 0 {
+			return m.pubsub.Unsubscribe(ctx, topic)
+		}
+	}
+
+	return nil
+}
+
+func (m *SubscriptionManager) RemoveMulti(ctx context.Context, topics []string) error {
+	var emptyTopics []string
+
+	for _, topic := range topics {
+		if m.subscriptions[topic] > 0 {
+			m.subscriptions[topic] -= 1
+
+			if m.subscriptions[topic] == 0 {
+				emptyTopics = append(emptyTopics, topic)
+			}
+		}
+	}
+
+	return m.pubsub.Unsubscribe(ctx, emptyTopics...)
+}
+
+func NewSubscriptionManager(client Client) *SubscriptionManager {
+	return &SubscriptionManager{
+		pubsub: client,
+		subscriptions: SubscriptionMap{},
+	}
 }
