@@ -1,44 +1,38 @@
 package pubsub
 
-import (
-	"github.com/vmihailenco/msgpack/v5"
-)
+import "github.com/vmihailenco/msgpack/v5"
 
 type MessageFilterKind int
 
-type MessageTarget interface {
-	Build() string
-}
-
 type FilterMap = map[MessageFilterKind]interface{}
 
-type Message struct {
-	Filters FilterMap 		`msgpack:"f,omitempty"`
-	Payload interface{} 	`msgpack:"p,omitempty"`
+type Message[T any] struct {
+	Filters FilterMap `msgpack:"f,omitempty"`
+	Payload T         `msgpack:"p,omitempty"`
 }
 
-func (m *Message) WithFilter(kind MessageFilterKind, value interface{}) *Message {
+func (m *Message[T]) WithFilter(kind MessageFilterKind, value T) *Message[T] {
 	m.Filters[kind] = value
 
 	return m
 }
 
-type rawMessage Message
+type rawMessage[T any] Message[T]
 
-func (m Message) MarshalBinary() ([]byte, error) {
-	return msgpack.Marshal((rawMessage)(m))
+func (m *Message[T]) MarshalBinary() ([]byte, error) {
+	return msgpack.Marshal((*rawMessage[T])(m))
 }
 
-func (m *Message) UnmarshalBinary(b []byte) error {
-	return msgpack.Unmarshal(b, (*rawMessage)(m))
+func (m *Message[T]) UnmarshalBinary(b []byte) error {
+	return msgpack.Unmarshal(b, (*rawMessage[T])(m))
 }
 
-func NewMessage(payload interface{}, opts ...FilterMap) Message {
+func NewMessage[T any](payload T, opts ...FilterMap) *Message[T] {
 	if len(opts) == 0 {
 		opts = append(opts, FilterMap{})
 	}
 
-	return Message{
+	return &Message[T]{
 		Payload: payload,
 		Filters: opts[0],
 	}

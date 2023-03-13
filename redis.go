@@ -8,11 +8,11 @@ import (
 
 type RedisDispatcher struct {
 	nodeId string
-	ctx context.Context
-	rdb *redis.Client
+	ctx    context.Context
+	rdb    *redis.Client
 }
 
-func (d *RedisDispatcher) Dispatch(topic string, message Message) error {
+func (d *RedisDispatcher) Dispatch(topic string, message interface{}) error {
 	bytes, err := msgpack.Marshal(message)
 
 	if err != nil {
@@ -22,14 +22,14 @@ func (d *RedisDispatcher) Dispatch(topic string, message Message) error {
 	return d.rdb.Publish(d.ctx, topic, bytes).Err()
 }
 
-func (d *RedisDispatcher) DispatchTo(target MessageTarget, message Message) error {
+func (d *RedisDispatcher) DispatchTo(target MessageTarget, message interface{}) error {
 	return d.Dispatch(target.Build(), message)
 }
 
 func NewRedisDispatcher(ctx context.Context, nodeId string, rdb *redis.Client) *RedisDispatcher {
 	return &RedisDispatcher{
-		ctx:             ctx,
-		nodeId:          nodeId,
-		rdb:             rdb,
+		ctx:    ctx,
+		nodeId: nodeId,
+		rdb:    rdb,
 	}
 }
